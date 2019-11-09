@@ -1,0 +1,9 @@
+[package]
+name = "deep-native"
+version = "0.1.0"
+authors = ["Geordon Worley <vadixidav@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+deep = { version = "0.1.0", path = "../deep" }
+ndarray = "0.13.0"

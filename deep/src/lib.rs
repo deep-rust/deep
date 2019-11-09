@@ -4,7 +4,7 @@ pub use tensor::Tensor;
 
 use ndarray::Axis;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Internal {
     /// The node to pull the input tensor from.
     node: usize,
@@ -22,6 +22,7 @@ impl Internal {
 pub enum Op {
     Add(Input, Input),
     Sub(Input, Input),
+    Square(Input),
     MeanPool(Axis),
 }
 
@@ -35,6 +36,9 @@ impl Op {
             Self::Sub(a, b) => {
                 a.shift_inputs(shift);
                 b.shift_inputs(shift);
+            }
+            Self::Square(a) => {
+                a.shift_inputs(shift);
             }
             _ => {}
         }
@@ -86,7 +90,7 @@ impl Graph {
     }
 }
 
-trait Backend {
+pub trait Backend {
     type Inputs;
     type Internal;
     type Output;
