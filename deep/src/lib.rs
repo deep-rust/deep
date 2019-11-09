@@ -44,8 +44,8 @@ trait Backend {
         internal: &Self::Internal,
         inputs: Self::Inputs,
         tensor: Tensor,
-        delta: Self::Output,
-    ) -> (Self::Delta, Self::Output);
+        output_delta: &Self::Output,
+    ) -> Self::Delta;
 
     /// Applies a delta to the graph.
     fn train(&self, graph: &mut Graph, delta: &Self::Delta);
