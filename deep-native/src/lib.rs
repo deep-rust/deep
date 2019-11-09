@@ -1,18 +1,23 @@
 use deep::*;
+use deep_backend_tools::*;
 use ndarray::ArrayD;
 use std::collections::HashMap;
+use std::rc::Rc;
+
+type Tensor = Rc<ArrayD<f32>>;
 
 struct Native;
 
 impl Backend for Native {
     /// The input is a feed dict from strings to tensors.
-    type Inputs = HashMap<String, ArrayD<f32>>;
+    type Inputs = HashMap<String, Tensor>;
     /// The internal type stores all the intermediary computations of the whole graph.
-    type Internal = HashMap<Internal, ArrayD<f32>>;
-    /// The output is a tensor.
-    type Output = ArrayD<f32>;
+    type Internal = HashMap<Internal, Tensor>;
+    /// Tensor type is `ndarray`'s `ArrayD`.
+    type Tensor = Tensor;
     /// The delta stores a map from nodes in the graph to their recieved gradient.
-    type Delta = HashMap<usize, ArrayD<f32>>;
+    type Delta = HashMap<usize, Tensor>;
+    type Error = Error;
 
     /// Gets the output of solving the requested tensor.
     fn forward(
@@ -20,7 +25,7 @@ impl Backend for Native {
         graph: &Graph,
         inputs: Self::Inputs,
         tensor: Input,
-    ) -> (Self::Output, Self::Internal) {
+    ) -> Result<(Self::Tensor, Self::Internal), Error> {
         unimplemented!()
     }
 
@@ -34,13 +39,13 @@ impl Backend for Native {
         internal: &Self::Internal,
         inputs: Self::Inputs,
         tensor: Input,
-        output_delta: &Self::Output,
-    ) -> Self::Delta {
+        output_delta: &Self::Tensor,
+    ) -> Result<Self::Delta, Error> {
         unimplemented!()
     }
 
     /// Applies a delta to the graph.
-    fn train(&self, graph: &mut Graph, delta: &Self::Delta) {
+    fn train(&self, graph: &mut Graph, delta: &Self::Delta) -> Result<(), Error> {
         unimplemented!()
     }
 }

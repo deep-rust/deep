@@ -1,10 +1,9 @@
 [package]
-name = "deep-native"
+name = "deep-backend-tools"
 version = "0.1.0"
 authors = ["Geordon Worley <vadixidav@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 deep = { version = "0.1.0", path = "../deep" }
-deep-backend-tools = { version = "0.1.0", path = "../deep-backend-tools" }
-ndarray = "0.13.0"
+failure = "0.1.6"

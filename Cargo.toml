@@ -3,4 +3,5 @@
 members = [
     "deep",
     "deep-native",
+    "deep-backend-tools",
 ]

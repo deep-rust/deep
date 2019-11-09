@@ -4,12 +4,12 @@ pub use tensor::Tensor;
 
 use ndarray::Axis;
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Internal {
     /// The node to pull the input tensor from.
-    node: usize,
+    pub node: usize,
     /// The specific output to pull from.
-    output: usize,
+    pub output: usize,
 }
 
 impl Internal {
@@ -23,7 +23,6 @@ pub enum Op {
     Add(Input, Input),
     Sub(Input, Input),
     Square(Input),
-    MeanPool(Axis),
 }
 
 impl Op {
@@ -70,7 +69,7 @@ impl From<&str> for Input {
 #[derive(Clone, Default, Debug)]
 pub struct Graph {
     /// A series of ops refering to each other's outputs for their input.
-    ops: Vec<Op>,
+    pub ops: Vec<Op>,
 }
 
 impl Graph {
@@ -93,8 +92,9 @@ impl Graph {
 pub trait Backend {
     type Inputs;
     type Internal;
-    type Output;
+    type Tensor;
     type Delta;
+    type Error;
 
     /// Gets the output of solving the requested tensor.
     fn forward(
@@ -102,7 +102,7 @@ pub trait Backend {
         graph: &Graph,
         inputs: Self::Inputs,
         tensor: Input,
-    ) -> (Self::Output, Self::Internal);
+    ) -> Result<(Self::Tensor, Self::Internal), Self::Error>;
 
     /// Propogates a delta from the output back to the input via chain rule
     /// and produces a `Delta` that can be used to update the graph
@@ -114,9 +114,9 @@ pub trait Backend {
         internal: &Self::Internal,
         inputs: Self::Inputs,
         tensor: Input,
-        output_delta: &Self::Output,
-    ) -> Self::Delta;
+        output_delta: &Self::Tensor,
+    ) -> Result<Self::Delta, Self::Error>;
 
     /// Applies a delta to the graph.
-    fn train(&self, graph: &mut Graph, delta: &Self::Delta);
+    fn train(&self, graph: &mut Graph, delta: &Self::Delta) -> Result<(), Self::Error>;
 }
