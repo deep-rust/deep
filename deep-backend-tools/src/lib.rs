@@ -1,7 +1,6 @@
 use deep::*;
 use failure::Fail;
 use std::collections::HashMap;
-use std::rc::Rc;
 
 #[derive(Debug, Fail)]
 pub enum Error {
@@ -14,29 +13,31 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub trait Feed: Backend {
-    fn feed(&self, inputs: &Self::Inputs, name: &str) -> Option<Rc<Self::Tensor>>;
+    fn feed(&self, inputs: &Self::Inputs, name: &str) -> Option<Self::Tensor>;
 }
 
 impl<B, T> Feed for B
 where
-    B: Backend<Inputs = HashMap<String, Rc<T>>, Tensor = T>,
+    B: Backend<Inputs = HashMap<String, T>, Tensor = T>,
+    T: Clone,
 {
-    fn feed(&self, inputs: &HashMap<String, Rc<T>>, name: &str) -> Option<Rc<T>> {
+    fn feed(&self, inputs: &HashMap<String, T>, name: &str) -> Option<T> {
         inputs.get(name).cloned()
     }
 }
 
 pub trait Immediate: Backend {
-    fn solve(&self, imop: ImOp<Self>, state: &[Self::Tensor]) -> Option<Vec<Rc<Self::Tensor>>>;
+    fn solve(&self, imop: ImOp<Self>, state: &[Self::Tensor]) -> Option<Vec<Self::Tensor>>;
 }
 
 pub struct Tape<B: Backend> {
-    solved: HashMap<Internal, Vec<Rc<B::Tensor>>>,
+    solved: HashMap<Internal, Vec<B::Tensor>>,
 }
 
-impl<B> Tape<B>
+impl<B, T> Tape<B>
 where
-    B: Feed + Immediate,
+    B: Feed + Immediate + Backend<Tensor = T>,
+    T: Clone,
 {
     pub fn solve(
         &mut self,
@@ -45,7 +46,7 @@ where
         state: &[Vec<B::Tensor>],
         inputs: &B::Inputs,
         input: Input,
-    ) -> Result<Rc<B::Tensor>> {
+    ) -> Result<B::Tensor> {
         match input {
             Input::Feed(name) => backend
                 .feed(inputs, &name)
@@ -71,14 +72,15 @@ where
 }
 
 pub enum ImOp<B: Backend + ?Sized> {
-    Add(Rc<B::Tensor>, Rc<B::Tensor>),
-    Sub(Rc<B::Tensor>, Rc<B::Tensor>),
-    Square(Rc<B::Tensor>),
+    Add(B::Tensor, B::Tensor),
+    Sub(B::Tensor, B::Tensor),
+    Square(B::Tensor),
 }
 
-impl<B> ImOp<B>
+impl<B, T> ImOp<B>
 where
-    B: Feed + Immediate,
+    B: Feed + Immediate + Backend<Tensor = T>,
+    T: Clone,
 {
     fn solve<'a>(
         op: Op,
@@ -89,7 +91,7 @@ where
         inputs: &B::Inputs,
     ) -> Result<Self> {
         let mut tensor = |input| tape.solve(backend, graph, state, inputs, input);
-        let mut double = |a, b, f: fn(Rc<B::Tensor>, Rc<B::Tensor>) -> Self| {
+        let mut double = |a, b, f: fn(B::Tensor, B::Tensor) -> Self| {
             tensor(a).and_then(|a| tensor(b).map(|b| f(a, b)))
         };
         match op {
