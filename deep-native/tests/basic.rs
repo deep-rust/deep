@@ -3,7 +3,6 @@ use deep_backend_tools::*;
 use deep_native::*;
 use ndarray::arr1;
 use rand::{thread_rng, RngCore};
-use std::collections::HashMap;
 
 struct Add;
 
@@ -12,12 +11,12 @@ impl Handler for Add {
         OpTy::Add
     }
 
-    fn generate_state(&self, op: &Op, rng: &mut dyn RngCore) -> Vec<Tsor> {
+    fn generate_state(&self, _op: &Op, _rng: &mut dyn RngCore) -> Vec<Tsor> {
         // There are no internal variables to an add operation.
         vec![]
     }
 
-    fn forward(&self, imop: ImOp<Native>, state: &[Tsor]) -> Vec<Tsor> {
+    fn forward(&self, imop: ImOp<Native>, _state: &[Tsor]) -> Vec<Tsor> {
         if let ImOp::Add(a, b) = imop {
             vec![a + b]
         } else {
@@ -27,8 +26,8 @@ impl Handler for Add {
 
     fn backward(
         &self,
-        imop: ImOp<Native>,
-        state: &[Tsor],
+        _imop: ImOp<Native>,
+        _state: &[Tsor],
         output_deltas: &[Tsor],
     ) -> (ImOp<Native>, Vec<Tsor>) {
         (
