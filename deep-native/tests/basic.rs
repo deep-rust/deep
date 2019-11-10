@@ -59,7 +59,7 @@ fn forward_add() {
     .collect();
     let target = Input::Internal(Internal { node: 0, output: 0 });
     let (output, _) = backend
-        .forward(&graph, &state, feed, target)
+        .forward(&graph, &state, &feed, target)
         .expect("unable to do forward prop");
     let expected = arr1(&[5.0]).into_shared().into_dyn();
     assert_eq!(output, expected);

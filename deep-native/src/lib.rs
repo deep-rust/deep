@@ -116,11 +116,11 @@ impl Backend for Native {
         &self,
         graph: &Graph,
         state: &Self::State,
-        inputs: Self::Inputs,
+        inputs: &Self::Inputs,
         tensor: Input,
     ) -> Result<(Self::Tensor, Self::Internal)> {
         let mut tape = Tape::new();
-        tape.solve(self, graph, &state[..], &inputs, tensor)
+        tape.solve(self, graph, &state[..], inputs, tensor)
             .map(|tensor| (tensor, tape))
     }
 
@@ -133,7 +133,7 @@ impl Backend for Native {
         graph: &Graph,
         state: &Self::State,
         internal: &Self::Internal,
-        inputs: Self::Inputs,
+        inputs: &Self::Inputs,
         tensor: Input,
         output_delta: &Self::Tensor,
     ) -> Result<Self::Delta> {

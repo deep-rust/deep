@@ -114,7 +114,7 @@ pub trait Backend {
         &self,
         graph: &Graph,
         state: &Self::State,
-        inputs: Self::Inputs,
+        inputs: &Self::Inputs,
         tensor: Input,
     ) -> Result<(Self::Tensor, Self::Internal), Self::Error>;
 
@@ -127,7 +127,7 @@ pub trait Backend {
         graph: &Graph,
         state: &Self::State,
         internal: &Self::Internal,
-        inputs: Self::Inputs,
+        inputs: &Self::Inputs,
         tensor: Input,
         output_delta: &Self::Tensor,
     ) -> Result<Self::Delta, Self::Error>;
