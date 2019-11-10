@@ -7,6 +7,29 @@ use std::iter::{Extend, FromIterator};
 
 pub type Tsor = ArcArray<f32, IxDyn>;
 
+pub fn tsor0(n: f32) -> Tsor {
+    ndarray::arr0(n).into_shared().into_dyn()
+}
+
+pub fn tsor1(n: &[f32]) -> Tsor {
+    ndarray::arr1(n).into_shared().into_dyn()
+}
+
+pub fn tsor2<V>(n: &[V]) -> Tsor
+where
+    V: ndarray::FixedInitializer<Elem = f32> + Clone,
+{
+    ndarray::arr2(n).into_shared().into_dyn()
+}
+
+pub fn tsor3<V, U>(n: &[V]) -> Tsor
+where
+    V: ndarray::FixedInitializer<Elem = U> + Clone,
+    U: ndarray::FixedInitializer<Elem = f32> + Clone,
+{
+    ndarray::arr3(n).into_shared().into_dyn()
+}
+
 pub trait Handler {
     /// This returns the op ty that this handler can execute.
     fn op(&self) -> OpTy;

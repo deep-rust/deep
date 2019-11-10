@@ -1,6 +1,7 @@
 use deep::*;
 use deep_backend_tools::*;
 use deep_native::*;
+use maplit::hashmap;
 use ndarray::arr1;
 use rand::{thread_rng, RngCore};
 
@@ -43,12 +44,10 @@ impl Handler for Add {
 fn forward_add() {
     let backend = Native::new().handler(Add);
     // Inputs
-    let feed = vec![
-        ("a".to_owned(), arr1(&[2.0]).into_shared().into_dyn()),
-        ("b".to_owned(), arr1(&[3.0]).into_shared().into_dyn()),
-    ]
-    .into_iter()
-    .collect();
+    let feed = hashmap! {
+        "a".to_owned() => tsor1(&[2.0]),
+        "b".to_owned() => tsor1(&[3.0]),
+    };
 
     // Add two input tensors to make an output tensor.
     let c = Tensor::from("a") + Tensor::from("b");
