@@ -42,25 +42,26 @@ impl Handler for Add {
 #[test]
 fn forward_add() {
     let backend = Native::new().handler(Add);
-
-    let mut graph = Graph::new();
-    graph.ops.push(Op::Add(
-        Input::Feed("a".to_owned()),
-        Input::Feed("b".to_owned()),
-    ));
-    let state = backend
-        .state(&graph, &mut thread_rng())
-        .expect("unable to generate state");
+    // Inputs
     let feed = vec![
         ("a".to_owned(), arr1(&[2.0]).into_shared().into_dyn()),
         ("b".to_owned(), arr1(&[3.0]).into_shared().into_dyn()),
     ]
     .into_iter()
     .collect();
-    let target = Input::Internal(Internal { node: 0, output: 0 });
-    let (output, _) = backend
-        .forward(&graph, &state, &feed, target)
-        .expect("unable to do forward prop");
+
+    // Add two input tensors to make an output tensor.
+    let c = Tensor::from("a") + Tensor::from("b");
+
+    // Generate the state for training the graph for the tensor.
+    let state = c
+        .gen_state(&backend, thread_rng())
+        .expect("unable to generate state");
+
+    // Evaluate the tensor given the inputs.
+    let output = c.eval(&backend, &state, &feed).expect("unable to eval");
+
+    // Validate the output.
     let expected = arr1(&[5.0]).into_shared().into_dyn();
     assert_eq!(output, expected);
 }
