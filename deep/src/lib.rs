@@ -1,8 +1,11 @@
+#[macro_use]
+extern crate strum_macros;
+
 mod tensor;
 
 pub use tensor::Tensor;
 
-use ndarray::Axis;
+use rand::RngCore;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Internal {
@@ -18,7 +21,8 @@ impl Internal {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumDiscriminants)]
+#[strum_discriminants(name(OpTy), derive(Hash))]
 pub enum Op {
     Add(Input, Input),
     Sub(Input, Input),
@@ -39,7 +43,6 @@ impl Op {
             Self::Square(a) => {
                 a.shift_inputs(shift);
             }
-            _ => {}
         }
     }
 }
@@ -94,12 +97,19 @@ pub trait Backend {
     type Internal;
     type Tensor;
     type Delta;
+    type State;
     type Error;
+
+    /// Generates the initial state for a graph.
+    fn state<R>(&self, graph: &Graph, rng: &mut R) -> Result<Self::State, Self::Error>
+    where
+        R: RngCore;
 
     /// Gets the output of solving the requested tensor.
     fn forward(
         &self,
         graph: &Graph,
+        state: &Self::State,
         inputs: Self::Inputs,
         tensor: Input,
     ) -> Result<(Self::Tensor, Self::Internal), Self::Error>;
@@ -111,12 +121,13 @@ pub trait Backend {
     fn backward(
         &self,
         graph: &Graph,
+        state: &Self::State,
         internal: &Self::Internal,
         inputs: Self::Inputs,
         tensor: Input,
         output_delta: &Self::Tensor,
     ) -> Result<Self::Delta, Self::Error>;
 
-    /// Applies a delta to the graph.
-    fn train(&self, graph: &mut Graph, delta: &Self::Delta) -> Result<(), Self::Error>;
+    /// Applies a delta to the graph's state.
+    fn train(&self, state: &mut Self::State, delta: &Self::Delta) -> Result<(), Self::Error>;
 }

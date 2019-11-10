@@ -5,11 +5,13 @@ use std::rc::Rc;
 
 #[derive(Debug, Fail)]
 pub enum Error {
-    #[fail(display = "input not provided: {}", name)]
+    #[fail(display = "input not provided for \"{}\"", name)]
     InputNotProvided { name: String },
+    #[fail(display = "no handler for \"{:?}\"", ty)]
+    OpHasNoHandler { ty: OpTy },
 }
 
-type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 pub trait Feed: Backend {
     fn feed(&self, inputs: &Self::Inputs, name: &str) -> Option<Rc<Self::Tensor>>;
@@ -25,7 +27,7 @@ where
 }
 
 pub trait Immediate: Backend {
-    fn solve(&self, imop: ImOp<Self>) -> Vec<Rc<Self::Tensor>>;
+    fn solve(&self, imop: ImOp<Self>, state: &[Self::Tensor]) -> Option<Vec<Rc<Self::Tensor>>>;
 }
 
 pub struct Tape<B: Backend> {
@@ -40,6 +42,7 @@ where
         &mut self,
         backend: &B,
         graph: &Graph,
+        state: &[Vec<B::Tensor>],
         inputs: &B::Inputs,
         input: Input,
     ) -> Result<Rc<B::Tensor>> {
@@ -53,8 +56,11 @@ where
                     Entry::Occupied(o) => return Ok(o.get()[internal.output].clone()),
                     Entry::Vacant(_) => graph.ops[internal.node].clone(),
                 };
-                ImOp::solve(op, self, backend, graph, inputs).map(|imop| {
-                    let solutions = backend.solve(imop);
+                let ty = op.into();
+                ImOp::solve(op, self, backend, graph, state, inputs).map(|imop| {
+                    let solutions = backend
+                        .solve(imop, &state[internal.node][..])
+                        .ok_or_else(|| Error::OpHasNoHandler { ty })?;
                     let output = solutions[internal.output].clone();
                     self.solved.insert(internal, solutions);
                     output
@@ -79,9 +85,10 @@ where
         tape: &'a mut Tape<B>,
         backend: &B,
         graph: &Graph,
+        state: &[Vec<B::Tensor>],
         inputs: &B::Inputs,
     ) -> Result<Self> {
-        let mut tensor = |input| tape.solve(backend, graph, inputs, input);
+        let mut tensor = |input| tape.solve(backend, graph, state, inputs, input);
         let mut double = |a, b, f: fn(Rc<B::Tensor>, Rc<B::Tensor>) -> Self| {
             tensor(a).and_then(|a| tensor(b).map(|b| f(a, b)))
         };
@@ -89,6 +96,19 @@ where
             Op::Add(a, b) => double(a, b, ImOp::Add),
             Op::Sub(a, b) => double(a, b, ImOp::Sub),
             Op::Square(a) => tensor(a).map(ImOp::Square),
+        }
+    }
+}
+
+impl<B> From<&ImOp<B>> for OpTy
+where
+    B: Backend,
+{
+    fn from(imop: &ImOp<B>) -> Self {
+        match imop {
+            ImOp::Add(..) => OpTy::Add,
+            ImOp::Sub(..) => OpTy::Sub,
+            ImOp::Square(..) => OpTy::Square,
         }
     }
 }

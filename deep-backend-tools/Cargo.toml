@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 deep = { version = "0.1.0", path = "../deep" }
 failure = "0.1.6"
+strum = "0.16.0"

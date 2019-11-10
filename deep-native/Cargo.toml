@@ -8,3 +8,4 @@ edition = "2018"
 deep = { version = "0.1.0", path = "../deep" }
 deep-backend-tools = { version = "0.1.0", path = "../deep-backend-tools" }
 ndarray = "0.13.0"
+rand = "0.7.2"
