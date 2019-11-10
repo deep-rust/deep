@@ -57,14 +57,16 @@ where
                     Entry::Occupied(o) => return Ok(o.get()[internal.output].clone()),
                     Entry::Vacant(_) => graph.ops[internal.node].clone(),
                 };
-                let ty = op.into();
-                ImOp::solve(op, self, backend, graph, state, inputs).map(|imop| {
-                    let solutions = backend
+                let ty = (&op).into();
+                ImOp::solve(op, self, backend, graph, state, inputs).and_then(|imop| {
+                    backend
                         .solve(imop, &state[internal.node][..])
-                        .ok_or_else(|| Error::OpHasNoHandler { ty })?;
-                    let output = solutions[internal.output].clone();
-                    self.solved.insert(internal, solutions);
-                    output
+                        .map(|solutions| {
+                            let output = solutions[internal.output].clone();
+                            self.solved.insert(internal, solutions);
+                            output
+                        })
+                        .ok_or_else(|| Error::OpHasNoHandler { ty })
                 })
             }
         }
