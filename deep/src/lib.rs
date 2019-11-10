@@ -5,7 +5,7 @@ mod tensor;
 
 pub use tensor::Tensor;
 
-use rand::RngCore;
+use rand_core::RngCore;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Internal {
@@ -76,7 +76,11 @@ pub struct Graph {
 }
 
 impl Graph {
-    fn merge(&mut self, other: Graph) {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn merge(&mut self, other: Graph) {
         let current = self.ops.len();
         self.ops.extend(other.ops);
         for op in &mut self.ops[current..] {
@@ -84,7 +88,7 @@ impl Graph {
         }
     }
 
-    fn merge_input(&mut self, other: Graph, mut input: Input) -> Input {
+    pub fn merge_input(&mut self, other: Graph, mut input: Input) -> Input {
         let current = self.ops.len();
         self.merge(other);
         input.shift_inputs(current);
@@ -101,7 +105,7 @@ pub trait Backend {
     type Error;
 
     /// Generates the initial state for a graph.
-    fn state<R>(&self, graph: &Graph, rng: &mut R) -> Result<Self::State, Self::Error>
+    fn state<R>(&self, graph: &Graph, rng: R) -> Result<Self::State, Self::Error>
     where
         R: RngCore;
 

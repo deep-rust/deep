@@ -1,21 +1,21 @@
 use deep::*;
 use deep_backend_tools::*;
-use ndarray::ArrayD;
-use rand::RngCore;
+use ndarray::{ArcArray, IxDyn};
+use rand_core::RngCore;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::iter::{Extend, FromIterator};
 
-type Tensor = Rc<ArrayD<f32>>;
+pub type Tsor = ArcArray<f32, IxDyn>;
 
 pub trait Handler {
     /// This returns the op ty that this handler can execute.
     fn op(&self) -> OpTy;
 
     /// This generates the trainable state for this graph node.
-    fn generate_state(&self, op: &Op, rng: &mut dyn RngCore) -> Vec<Tensor>;
+    fn generate_state(&self, op: &Op, rng: &mut dyn RngCore) -> Vec<Tsor>;
 
     /// This performs forward propogation for the op.
-    fn forward(&self, imop: ImOp<Native>, state: &[Tensor]) -> Vec<Tensor>;
+    fn forward(&self, imop: ImOp<Native>, state: &[Tsor]) -> Vec<Tsor>;
 
     /// This performs backward propogation for the op.
     ///
@@ -23,31 +23,78 @@ pub trait Handler {
     fn backward(
         &self,
         imop: ImOp<Native>,
-        state: &[Tensor],
-        output_deltas: &[Tensor],
-    ) -> (ImOp<Native>, Vec<Tensor>);
+        state: &[Tsor],
+        output_deltas: &[Tsor],
+    ) -> (ImOp<Native>, Vec<Tsor>);
 }
 
+#[derive(Default)]
 pub struct Native {
     handlers: HashMap<OpTy, Box<dyn Handler>>,
 }
 
+impl Native {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Use this to add one handler.
+    pub fn handler<H>(mut self, h: H) -> Self
+    where
+        H: Handler + 'static,
+    {
+        self.handlers
+            .insert(h.op(), Box::new(h) as Box<dyn Handler>);
+        self
+    }
+
+    /// Use this to add several handlers at once, such as from a library.
+    pub fn handlers<I>(mut self, iter: I) -> Self
+    where
+        I: IntoIterator<Item = Box<dyn Handler>>,
+    {
+        self.extend(iter);
+        self
+    }
+}
+
+impl Extend<Box<dyn Handler>> for Native {
+    fn extend<T>(&mut self, iter: T)
+    where
+        T: IntoIterator<Item = Box<dyn Handler>>,
+    {
+        self.handlers
+            .extend(iter.into_iter().map(|handler| (handler.op(), handler)))
+    }
+}
+
+impl FromIterator<Box<dyn Handler>> for Native {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = Box<dyn Handler>>,
+    {
+        let mut backend = Self::new();
+        backend.extend(iter);
+        backend
+    }
+}
+
 impl Backend for Native {
     /// The input is a feed dict from strings to tensors.
-    type Inputs = HashMap<String, Tensor>;
+    type Inputs = HashMap<String, Tsor>;
     /// The internal type stores all the intermediary computations of the whole graph.
-    type Internal = HashMap<Internal, Tensor>;
-    /// Tensor type is `ndarray`'s `ArrayD`.
-    type Tensor = Tensor;
+    type Internal = Tape<Self>;
+    /// Tensor type is `ndarray`'s `ArcArray` over dynamic dimension.
+    type Tensor = Tsor;
     /// The delta stores a map from nodes in the graph to their recieved gradient.
-    type Delta = HashMap<usize, Vec<Tensor>>;
+    type Delta = HashMap<usize, Vec<Tsor>>;
     /// State contains all state data (internal tensors that are being trained or static).
-    type State = Vec<Vec<Tensor>>;
+    type State = Vec<Vec<Tsor>>;
     /// Error is the error type for the native backend.
     type Error = Error;
 
     /// Generates the initial state for a graph.
-    fn state<R>(&self, graph: &Graph, rng: &mut R) -> Result<Self::State>
+    fn state<R>(&self, graph: &Graph, mut rng: R) -> Result<Self::State>
     where
         R: RngCore,
     {
@@ -59,7 +106,7 @@ impl Backend for Native {
                 self.handlers
                     .get(&ty)
                     .ok_or_else(|| Error::OpHasNoHandler { ty })
-                    .map(|handler| handler.generate_state(op, rng))
+                    .map(|handler| handler.generate_state(op, &mut rng))
             })
             .collect()
     }
@@ -72,7 +119,9 @@ impl Backend for Native {
         inputs: Self::Inputs,
         tensor: Input,
     ) -> Result<(Self::Tensor, Self::Internal)> {
-        unimplemented!()
+        let mut tape = Tape::new();
+        tape.solve(self, graph, &state[..], &inputs, tensor)
+            .map(|tensor| (tensor, tape))
     }
 
     /// Propogates a delta from the output back to the input via chain rule
@@ -98,7 +147,7 @@ impl Backend for Native {
 }
 
 impl Immediate for Native {
-    fn solve(&self, imop: ImOp<Self>, state: &[Tensor]) -> Option<Vec<Tensor>> {
+    fn solve(&self, imop: ImOp<Self>, state: &[Tsor]) -> Option<Vec<Tsor>> {
         let ty = (&imop).into();
         self.handlers
             .get(&ty)

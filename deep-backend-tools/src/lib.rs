@@ -34,11 +34,27 @@ pub struct Tape<B: Backend> {
     solved: HashMap<Internal, Vec<B::Tensor>>,
 }
 
+impl<B, T> Default for Tape<B>
+where
+    B: Feed + Immediate + Backend<Tensor = T>,
+    T: Clone,
+{
+    fn default() -> Self {
+        Self {
+            solved: Default::default(),
+        }
+    }
+}
+
 impl<B, T> Tape<B>
 where
     B: Feed + Immediate + Backend<Tensor = T>,
     T: Clone,
 {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn solve(
         &mut self,
         backend: &B,
