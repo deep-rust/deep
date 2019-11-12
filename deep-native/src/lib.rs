@@ -177,3 +177,17 @@ impl Immediate for Native {
             .map(|handler| handler.forward(imop, state))
     }
 }
+
+impl Propogate for Native {
+    fn propogate(
+        &self,
+        imop: ImOp<Self>,
+        state: &[Tsor],
+        output_deltas: &[Tsor],
+    ) -> Option<(ImOp<Self>, Vec<Tsor>)> {
+        let ty = (&imop).into();
+        self.handlers
+            .get(&ty)
+            .map(|handler| handler.backward(imop, state, output_deltas))
+    }
+}

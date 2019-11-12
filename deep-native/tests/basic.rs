@@ -27,16 +27,20 @@ impl Handler for Add {
 
     fn backward(
         &self,
-        _imop: ImOp<Native>,
+        imop: ImOp<Native>,
         _state: &[Tsor],
         output_deltas: &[Tsor],
     ) -> (ImOp<Native>, Vec<Tsor>) {
-        (
-            // The gradient goes to both inputs the same.
-            ImOp::Add(output_deltas[0].clone(), output_deltas[0].clone()),
-            // There are no internal variables to provide gradient.
-            vec![],
-        )
+        if let ImOp::Add(..) = imop {
+            (
+                // The gradient goes to both inputs the same.
+                ImOp::Add(output_deltas[0].clone(), output_deltas[0].clone()),
+                // There are no internal variables to provide gradient.
+                vec![],
+            )
+        } else {
+            panic!("got {:?} when OpTy::Add was expected", OpTy::from(&imop));
+        }
     }
 }
 

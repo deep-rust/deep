@@ -30,6 +30,15 @@ pub trait Immediate: Backend {
     fn solve(&self, imop: ImOp<Self>, state: &[Self::Tensor]) -> Option<Vec<Self::Tensor>>;
 }
 
+pub trait Propogate: Backend {
+    fn propogate(
+        &self,
+        imop: ImOp<Self>,
+        state: &[Self::Tensor],
+        output_deltas: &[Self::Tensor],
+    ) -> Option<(ImOp<Self>, Vec<Self::Tensor>)>;
+}
+
 pub struct Tape<B: Backend> {
     solved: HashMap<Internal, Vec<B::Tensor>>,
 }
@@ -86,6 +95,22 @@ where
                 })
             }
         }
+    }
+
+    /// Propogates the output from `output_delta` to all of the pieces that contributed to
+    /// the output specified by `input`.
+    ///
+    /// This process will produce the `Backend::Delta` that can be used to train the state.
+    pub fn backprop(
+        &mut self,
+        backend: &B,
+        graph: &Graph,
+        state: &[Vec<B::Tensor>],
+        inputs: &B::Inputs,
+        input: Input,
+        output_delta: B::Tensor,
+    ) -> Result<B::Delta> {
+        unimplemented!()
     }
 }
 
