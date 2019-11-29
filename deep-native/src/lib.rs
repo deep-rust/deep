@@ -47,7 +47,7 @@ pub trait Handler {
         &self,
         imop: ImOp<Native>,
         state: &[Tsor],
-        output_deltas: &[Tsor],
+        output_delta: (usize, Tsor),
     ) -> (ImOp<Native>, Vec<Tsor>);
 }
 
@@ -183,11 +183,11 @@ impl Propogate for Native {
         &self,
         imop: ImOp<Self>,
         state: &[Tsor],
-        output_deltas: &[Tsor],
+        output_delta: (usize, Tsor),
     ) -> Option<(ImOp<Self>, Vec<Tsor>)> {
         let ty = (&imop).into();
         self.handlers
             .get(&ty)
-            .map(|handler| handler.backward(imop, state, output_deltas))
+            .map(|handler| handler.backward(imop, state, output_delta))
     }
 }
