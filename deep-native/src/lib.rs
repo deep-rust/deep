@@ -173,7 +173,12 @@ impl Backend for Native {
 
     /// Applies a delta to the graph.
     fn train(&self, state: &mut Self::State, delta: &Self::Delta) -> Result<()> {
-        unimplemented!()
+        for (&node, deltas) in &delta.table {
+            for (a, b) in state[node].iter_mut().zip(deltas.iter()) {
+                *a += b;
+            }
+        }
+        Ok(())
     }
 }
 
