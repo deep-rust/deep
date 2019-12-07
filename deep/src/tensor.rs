@@ -18,7 +18,7 @@ impl Tensor {
         backend.state(&self.graph.borrow(), rng)
     }
 
-    /// Evaluates the tensor
+    /// Evaluate the tensor.
     pub fn eval<B>(
         &self,
         backend: &B,
@@ -31,6 +31,48 @@ impl Tensor {
         backend
             .forward(&self.graph.borrow(), state, inputs, self.input.clone())
             .map(|(output, _)| output)
+    }
+
+    /// Train the graph with this tensor as a loss function using gradient descent.
+    ///
+    /// Must be provided a way to convert the loss tensor into a `f32` and a `f32` to a tensor.
+    ///
+    /// Returns the loss before training.
+    pub fn gradient_descent<B>(
+        &self,
+        backend: &B,
+        state: &mut B::State,
+        inputs: &B::Inputs,
+        learning_rate: f32,
+        tensor_loss: fn(B::Tensor) -> f32,
+        delta_tensor: fn(f32) -> B::Tensor,
+    ) -> Result<f32, B::Error>
+    where
+        B: Backend,
+    {
+        // Perform the forward pass.
+        let (output, internal) =
+            backend.forward(&self.graph.borrow(), state, inputs, self.input.clone())?;
+
+        // Extract the loss and compute the output delta.
+        let loss = tensor_loss(output);
+        let output_delta = delta_tensor(-learning_rate * loss);
+
+        // Propogate the output delta back through the network.
+        let delta = backend.backward(
+            &self.graph.borrow(),
+            state,
+            &internal,
+            inputs,
+            self.input.clone(),
+            output_delta,
+        )?;
+
+        // Train the network.
+        backend.train(state, &delta)?;
+
+        // Return the loss.
+        Ok(loss)
     }
 }
 

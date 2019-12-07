@@ -40,6 +40,41 @@ impl Handler for Add {
     }
 }
 
+struct Zeros;
+
+impl Handler for Zeros {
+    fn op(&self) -> OpTy {
+        OpTy::Zeros
+    }
+
+    fn generate_state(&self, op: &Op, _rng: &mut dyn RngCore) -> Vec<Tsor> {
+        if let Op::Zeros(shape) = op {
+            vec![Tsor::zeros(&shape[..])]
+        } else {
+            panic!("got {:?} when Op::Zeros was expected", OpTy::from(op));
+        }
+    }
+
+    fn forward(&self, imop: ImOp<Native>, state: &[Tsor]) -> Vec<Tsor> {
+        if let ImOp::Zeros = imop {
+            vec![state[0].clone()]
+        } else {
+            panic!("got {:?} when OpTy::Zeros was expected", OpTy::from(&imop));
+        }
+    }
+
+    fn backward(
+        &self,
+        imop: ImOp<Native>,
+        _state: &[Tsor],
+        (_, output_delta): (usize, Tsor),
+    ) -> (ImOp<Native>, Vec<Tsor>) {
+        let ty: OpTy = (&imop).into();
+        assert_eq!(ty, OpTy::Zeros);
+        (ImOp::Zeros, vec![output_delta])
+    }
+}
+
 #[test]
 fn forward_add() {
     let backend = Native::new().handler(Add);
