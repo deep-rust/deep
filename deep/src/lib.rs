@@ -27,6 +27,7 @@ pub enum Op {
     Add(Input, Input),
     Sub(Input, Input),
     Square(Input),
+    Zeros(Vec<usize>),
 }
 
 impl Op {
@@ -43,6 +44,7 @@ impl Op {
             Self::Square(a) => {
                 a.shift_inputs(shift);
             }
+            Self::Zeros(..) => {}
         }
     }
 }

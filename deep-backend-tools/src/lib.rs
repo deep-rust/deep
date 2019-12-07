@@ -190,6 +190,7 @@ pub enum ImOp<B: Backend + ?Sized> {
     Add(B::Tensor, B::Tensor),
     Sub(B::Tensor, B::Tensor),
     Square(B::Tensor),
+    Zeros,
 }
 
 impl<B> ImOp<B>
@@ -245,6 +246,7 @@ where
             Op::Add(a, b) => double(a, b, ImOp::Add),
             Op::Sub(a, b) => double(a, b, ImOp::Sub),
             Op::Square(a) => tensor(a).map(ImOp::Square),
+            Op::Zeros(..) => Ok(ImOp::Zeros),
         }
     }
 
@@ -286,6 +288,7 @@ where
         };
 
         // This is to appease the borrow checker because I was getting moved closure errors.
+        let gradients1 = gradients.clone();
         let gradients2 = gradients.clone();
 
         // This recursively backprops to send the gradient to a new graph node.
@@ -297,7 +300,7 @@ where
         // It will update the delta for this op and recursively backprop to its inputs.
         // This requires the two inputs, a function to turn the inputs into an ImOp, and a function to decompose the
         // ImOp into a tuple tensors to pass the gradient backwards.
-        let double = |ia: Input,
+        let binary = |ia: Input,
                       ib: Input,
                       fimop: fn(B::Tensor, B::Tensor) -> Self,
                       fundo: fn(ImOp<B>) -> SResult<(B::Tensor, B::Tensor), Self>,
@@ -325,13 +328,13 @@ where
         // It will update the delta for this op and recursively backprop to its inputs.
         // This requires the input, a function to turn the input into an ImOp, and a function to decompose the
         // ImOp into its tensor to pass the gradient backwards.
-        let single = |ia: Input,
-                      fimop: fn(B::Tensor) -> Self,
-                      fundo: fn(ImOp<B>) -> SResult<B::Tensor, Self>,
-                      mut deltas: E| {
+        let unary = |ia: Input,
+                     fimop: fn(B::Tensor) -> Self,
+                     fundo: fn(ImOp<B>) -> SResult<B::Tensor, Self>,
+                     mut deltas: E| {
             tensor(ia.clone(), tape)
-                .map(|a| fimop(a))
-                .and_then(gradients)
+                .map(fimop)
+                .and_then(gradients1)
                 .map(|(input_gradients, train_gradients)| {
                     deltas.extend(std::iter::once((internal.node, train_gradients)));
                     input_gradients
@@ -344,10 +347,20 @@ where
                 })
                 .and_then(|ta| backprop(ia, ta, tape, deltas))
         };
+
+        // This updates the delta for this op only. It has no runtime inputs, so it does not recurse.
+        let nullary = |imop: Self, mut deltas: E| {
+            gradients(imop).map(|(_, train_gradients)| {
+                deltas.extend(std::iter::once((internal.node, train_gradients)));
+                deltas
+            })
+        };
+
         match op {
-            Op::Add(a, b) => double(a, b, ImOp::Add, ImOp::add, deltas),
-            Op::Sub(a, b) => double(a, b, ImOp::Sub, ImOp::sub, deltas),
-            Op::Square(a) => single(a, ImOp::Square, ImOp::square, deltas),
+            Op::Add(a, b) => binary(a, b, ImOp::Add, ImOp::add, deltas),
+            Op::Sub(a, b) => binary(a, b, ImOp::Sub, ImOp::sub, deltas),
+            Op::Square(a) => unary(a, ImOp::Square, ImOp::square, deltas),
+            Op::Zeros(..) => nullary(ImOp::Zeros, deltas),
         }
     }
 }
@@ -361,6 +374,7 @@ where
             ImOp::Add(..) => OpTy::Add,
             ImOp::Sub(..) => OpTy::Sub,
             ImOp::Square(..) => OpTy::Square,
+            ImOp::Zeros => OpTy::Zeros,
         }
     }
 }
