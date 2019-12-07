@@ -1,6 +1,6 @@
-mod train_table;
+mod accumulate_tensors;
 
-pub use train_table::AccumulateTensors;
+pub use accumulate_tensors::AccumulateTensors;
 
 use deep::*;
 use failure::Fail;

@@ -129,7 +129,7 @@ pub trait Backend {
         internal: &Self::Internal,
         inputs: &Self::Inputs,
         tensor: Input,
-        output_delta: &Self::Tensor,
+        output_delta: Self::Tensor,
     ) -> Result<Self::Delta, Self::Error>;
 
     /// Applies a delta to the graph's state.

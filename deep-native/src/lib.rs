@@ -110,7 +110,7 @@ impl Backend for Native {
     /// Tensor type is `ndarray`'s `ArcArray` over dynamic dimension.
     type Tensor = Tsor;
     /// The delta stores a map from nodes in the graph to their recieved gradient.
-    type Delta = HashMap<usize, Vec<Tsor>>;
+    type Delta = AccumulateTensors<Tsor>;
     /// State contains all state data (internal tensors that are being trained or static).
     type State = Vec<Vec<Tsor>>;
     /// Error is the error type for the native backend.
@@ -158,9 +158,17 @@ impl Backend for Native {
         internal: &Self::Internal,
         inputs: &Self::Inputs,
         tensor: Input,
-        output_delta: &Self::Tensor,
+        output_delta: Self::Tensor,
     ) -> Result<Self::Delta> {
-        unimplemented!()
+        internal.backprop(
+            self,
+            graph,
+            &state[..],
+            inputs,
+            tensor,
+            output_delta,
+            AccumulateTensors::new(),
+        )
     }
 
     /// Applies a delta to the graph.

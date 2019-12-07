@@ -6,14 +6,14 @@ pub struct AccumulateTensors<T> {
 }
 
 impl<T> AccumulateTensors<T> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 }
 
 impl<T> AccumulateTensors<T>
 where
-    T: Default + AddAssign,
+    T: Default + for<'a> AddAssign<&'a T> + 'static,
 {
     fn insert(&mut self, slot: usize, tensors: Vec<T>) {
         use std::collections::hash_map::Entry;
@@ -26,7 +26,7 @@ where
                      than what is being added to it for a given op"
                 );
                 for (at, bt) in o.get_mut().iter_mut().zip(tensors) {
-                    *at += bt;
+                    *at += &bt;
                 }
             }
             Entry::Vacant(v) => {
@@ -38,7 +38,7 @@ where
 
 impl<T> Extend<(usize, Vec<T>)> for AccumulateTensors<T>
 where
-    T: Default + AddAssign,
+    T: Default + for<'a> AddAssign<&'a T> + 'static,
 {
     fn extend<I>(&mut self, iter: I)
     where
