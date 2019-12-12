@@ -10,6 +10,24 @@ pub struct Tensor {
 }
 
 impl Tensor {
+    pub fn train_const(shape: Vec<usize>, value: f64) -> Self {
+        let mut graph: Graph = Default::default();
+        graph.ops.push(Op::TrainConst(shape, value));
+        Tensor {
+            graph: Rc::new(RefCell::new(graph)),
+            input: Input::Internal(Internal { node: 0, output: 0 }),
+        }
+    }
+
+    pub fn squared(&self) -> Self {
+        let graph = self.graph.clone();
+        let node = graph.borrow_mut().append(Op::Square(self.input.clone()));
+        Self {
+            graph,
+            input: Input::Internal(Internal { node, output: 0 }),
+        }
+    }
+
     /// Creates the state for the tensor.
     pub fn gen_state<B>(&self, backend: &B, rng: impl RngCore) -> Result<B::State, B::Error>
     where
@@ -91,8 +109,7 @@ fn merge2_1(a: Tensor, b: Tensor, make_op: impl Fn(Input, Input) -> Op) -> Tenso
     let b = graph
         .borrow_mut()
         .merge_input(b.graph.borrow().clone(), b.input);
-    graph.borrow_mut().ops.push(make_op(a, b));
-    let node = graph.borrow().ops.len() - 1;
+    let node = graph.borrow_mut().append(make_op(a, b));
     Tensor {
         graph,
         input: Input::Internal(Internal { node, output: 0 }),

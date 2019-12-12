@@ -27,7 +27,7 @@ pub enum Op {
     Add(Input, Input),
     Sub(Input, Input),
     Square(Input),
-    Zeros(Vec<usize>),
+    TrainConst(Vec<usize>, f64),
 }
 
 impl Op {
@@ -44,7 +44,7 @@ impl Op {
             Self::Square(a) => {
                 a.shift_inputs(shift);
             }
-            Self::Zeros(..) => {}
+            Self::TrainConst(..) => {}
         }
     }
 }
@@ -95,6 +95,12 @@ impl Graph {
         self.merge(other);
         input.shift_inputs(current);
         input
+    }
+
+    /// Returns the node index of the appended op.
+    pub fn append(&mut self, op: Op) -> usize {
+        self.ops.push(op);
+        self.ops.len() - 1
     }
 }
 

@@ -190,7 +190,7 @@ pub enum ImOp<B: Backend + ?Sized> {
     Add(B::Tensor, B::Tensor),
     Sub(B::Tensor, B::Tensor),
     Square(B::Tensor),
-    Zeros,
+    TrainConst,
 }
 
 impl<B> ImOp<B>
@@ -246,7 +246,7 @@ where
             Op::Add(a, b) => double(a, b, ImOp::Add),
             Op::Sub(a, b) => double(a, b, ImOp::Sub),
             Op::Square(a) => tensor(a).map(ImOp::Square),
-            Op::Zeros(..) => Ok(ImOp::Zeros),
+            Op::TrainConst(..) => Ok(ImOp::TrainConst),
         }
     }
 
@@ -360,7 +360,7 @@ where
             Op::Add(a, b) => binary(a, b, ImOp::Add, ImOp::add, deltas),
             Op::Sub(a, b) => binary(a, b, ImOp::Sub, ImOp::sub, deltas),
             Op::Square(a) => unary(a, ImOp::Square, ImOp::square, deltas),
-            Op::Zeros(..) => nullary(ImOp::Zeros, deltas),
+            Op::TrainConst(..) => nullary(ImOp::TrainConst, deltas),
         }
     }
 }
@@ -374,7 +374,7 @@ where
             ImOp::Add(..) => OpTy::Add,
             ImOp::Sub(..) => OpTy::Sub,
             ImOp::Square(..) => OpTy::Square,
-            ImOp::Zeros => OpTy::Zeros,
+            ImOp::TrainConst => OpTy::TrainConst,
         }
     }
 }
