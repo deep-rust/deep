@@ -1,0 +1,10 @@
+[package]
+name = "deep-backend-tools"
+version = "0.1.0"
+authors = ["Geordon Worley <vadixidav@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+deep = { version = "0.1.0", path = "../deep" }
+failure = "0.1.6"
+strum = "0.16.0"
